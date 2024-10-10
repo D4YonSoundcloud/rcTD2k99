@@ -64,8 +64,8 @@ roller-coaster-defense/
 │   └── style.css
 ├── public/
 │   ├── assets/
-│   └── index.html
 ├── tests/
+└── index.html
 ├── vite.config.ts
 ├── tsconfig.json
 ├── package.json
