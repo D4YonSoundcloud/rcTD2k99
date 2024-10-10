@@ -57,6 +57,7 @@ Roller Coaster Defense is an innovative Player versus Enemy (PvE) tower defense 
 roller-coaster-defense/
 ├── src/
 │   ├── components/
+│   │   └── CameraSystem.ts
 │   ├── scenes/
 │   ├── shaders/
 │   ├── utils/
