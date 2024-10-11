@@ -1,17 +1,20 @@
 import './style.css';
 import * as THREE from 'three';
 import { CameraSystem } from './components/CameraSystem';
+import { ActionsMenu } from './components/ActionsMenu';
 
 class Game {
     private scene: THREE.Scene;
     private cameraSystem: CameraSystem;
     private renderer: THREE.WebGLRenderer;
     private objects: THREE.Object3D[] = [];
+    private actionsMenu: ActionsMenu;
 
     constructor() {
         this.scene = new THREE.Scene();
         this.cameraSystem = new CameraSystem(window.innerWidth / window.innerHeight);
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        this.actionsMenu = new ActionsMenu(this.cameraSystem);
 
         this.init();
     }
@@ -23,11 +26,11 @@ class Game {
 
         this.createDemoScene();
         this.addLighting();
-        this.createRotationButtons();
 
         window.addEventListener('resize', () => this.onWindowResize(), false);
         document.addEventListener('keydown', (event) => this.onKeyDown(event));
         document.addEventListener('mousemove', (event) => this.onMouseMove(event));
+        document.addEventListener('wheel', (event) => this.onWheel(event), { passive: false });
 
         this.animate();
     }
@@ -112,24 +115,6 @@ class Game {
         this.scene.add(hemisphereLight);
     }
 
-    private createRotationButtons(): void {
-        const rotateLeftBtn = document.createElement('button');
-        rotateLeftBtn.textContent = 'Rotate Left';
-        rotateLeftBtn.style.position = 'absolute';
-        rotateLeftBtn.style.left = '10px';
-        rotateLeftBtn.style.top = '10px';
-        rotateLeftBtn.addEventListener('click', () => this.cameraSystem.rotateCamera('left'));
-        document.body.appendChild(rotateLeftBtn);
-
-        const rotateRightBtn = document.createElement('button');
-        rotateRightBtn.textContent = 'Rotate Right';
-        rotateRightBtn.style.position = 'absolute';
-        rotateRightBtn.style.right = '10px';
-        rotateRightBtn.style.top = '10px';
-        rotateRightBtn.addEventListener('click', () => this.cameraSystem.rotateCamera('right'));
-        document.body.appendChild(rotateRightBtn);
-    }
-
     private onWindowResize(): void {
         const aspect = window.innerWidth / window.innerHeight;
         this.cameraSystem.updateAspect(aspect);
@@ -139,27 +124,50 @@ class Game {
     private onKeyDown(event: KeyboardEvent): void {
         switch (event.key) {
             case 'ArrowUp':
-                this.cameraSystem.moveCamera('up');
-                break;
-            case 'ArrowDown':
-                this.cameraSystem.moveCamera('down');
-                break;
-            case 'ArrowLeft':
                 this.cameraSystem.moveCamera('left');
                 break;
-            case 'ArrowRight':
+            case 'ArrowDown':
                 this.cameraSystem.moveCamera('right');
+                break;
+            case 'ArrowLeft':
+                this.cameraSystem.moveCamera('up');
+                break;
+            case 'ArrowRight':
+                this.cameraSystem.moveCamera('down');
                 break;
         }
     }
 
     private onMouseMove(event: MouseEvent): void {
-        this.cameraSystem.handleEdgeScrolling(
-            event.clientX,
-            event.clientY,
-            window.innerWidth,
-            window.innerHeight
-        );
+        const edgeThreshold = 50; // pixels from edge to trigger scrolling
+        const { clientX, clientY } = event;
+        const { innerWidth, innerHeight } = window;
+
+        if (clientX < edgeThreshold) {
+            this.cameraSystem.moveCamera('up');
+        } else if (clientX > innerWidth - edgeThreshold) {
+            this.cameraSystem.moveCamera('down');
+        }
+
+        if (clientY < edgeThreshold) {
+            this.cameraSystem.moveCamera('left');
+        } else if (clientY > innerHeight - edgeThreshold) {
+            this.cameraSystem.moveCamera('right');
+        }
+    }
+
+    private onWheel(event: WheelEvent): void {
+        event.preventDefault(); // Prevent page scrolling
+
+        const delta = Math.sign(event.deltaY);
+        const currentZoom = this.cameraSystem.getCurrentZoomLevel();
+        const totalZoomLevels = this.cameraSystem.getTotalZoomLevels();
+
+        if (delta > 0 && currentZoom < totalZoomLevels - 1) {
+            this.cameraSystem.zoomOut();
+        } else if (delta < 0 && currentZoom > 0) {
+            this.cameraSystem.zoomIn();
+        }
     }
 
     private animate(): void {
