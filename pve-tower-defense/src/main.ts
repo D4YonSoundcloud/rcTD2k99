@@ -2,6 +2,9 @@ import './style.css';
 import * as THREE from 'three';
 import { CameraSystem } from './components/CameraSystem';
 import { ActionsMenu } from './components/ActionsMenu';
+import { CoasterBuilder } from './components/rollercoaster/CoasterBuilder';
+import { TrackType } from './components/rollercoaster/TrackPiece';
+import { UI } from './components/UI';
 
 class Game {
     private scene: THREE.Scene;
@@ -9,12 +12,21 @@ class Game {
     private renderer: THREE.WebGLRenderer;
     private objects: THREE.Object3D[] = [];
     private actionsMenu: ActionsMenu;
+    private coasterBuilder: CoasterBuilder;
+    private raycaster: THREE.Raycaster;
+    private mouse: THREE.Vector2;
+    private buildMode: boolean = false;
+    private ui: UI;
 
     constructor() {
         this.scene = new THREE.Scene();
         this.cameraSystem = new CameraSystem(window.innerWidth / window.innerHeight);
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.actionsMenu = new ActionsMenu(this.cameraSystem);
+        this.coasterBuilder = new CoasterBuilder(this.scene);
+        this.raycaster = new THREE.Raycaster();
+        this.mouse = new THREE.Vector2();
+        this.ui = new UI();
 
         this.init();
     }
@@ -30,6 +42,7 @@ class Game {
         window.addEventListener('resize', () => this.onWindowResize(), false);
         document.addEventListener('keydown', (event) => this.onKeyDown(event));
         document.addEventListener('mousemove', (event) => this.onMouseMove(event));
+        document.addEventListener('click', (event) => this.onClick(event));
         document.addEventListener('wheel', (event) => this.onWheel(event), { passive: false });
 
         this.animate();
@@ -121,6 +134,76 @@ class Game {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
+    private onWheel(event: WheelEvent): void {
+        event.preventDefault(); // Prevent page scrolling
+
+        const delta = Math.sign(event.deltaY);
+        const currentZoom = this.cameraSystem.getCurrentZoomLevel();
+        const totalZoomLevels = this.cameraSystem.getTotalZoomLevels();
+
+        if (delta > 0 && currentZoom < totalZoomLevels - 1) {
+            this.cameraSystem.zoomOut();
+        } else if (delta < 0 && currentZoom > 0) {
+            this.cameraSystem.zoomIn();
+        }
+    }
+
+    private onMouseMove(event: MouseEvent): void {
+        this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        if (this.buildMode) {
+            this.updateTrackPreview();
+        }
+    }
+
+    private onClick(event: MouseEvent): void {
+        if (this.buildMode) {
+            this.raycaster.setFromCamera(this.mouse, this.cameraSystem.getCamera());
+            const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+
+            if (intersects.length > 0) {
+                const intersectionPoint = intersects[0].point;
+                console.log('Placing track at:', intersectionPoint);
+                const selectedTrackType = this.ui.getSelectedTrackType();
+                const trackLength = this.ui.getTrackLength();
+                const trackAngle = this.ui.getTrackAngle();
+                this.coasterBuilder.placeTrackPiece(selectedTrackType, trackLength, trackAngle, intersectionPoint);
+            }
+        }
+    }
+
+    private updateTrackPreview(): void {
+        this.raycaster.setFromCamera(this.mouse, this.cameraSystem.getCamera());
+        const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+
+        if (intersects.length > 0) {
+            const intersectionPoint = intersects[0].point;
+            console.log('Intersection point:', intersectionPoint);
+            const selectedTrackType = this.ui.getSelectedTrackType();
+            const trackLength = this.ui.getTrackLength();
+            const trackAngle = this.ui.getTrackAngle();
+            this.coasterBuilder.previewTrackPiece(selectedTrackType, trackLength, trackAngle, intersectionPoint);
+        } else {
+            console.log('No intersection found');
+        }
+    }
+
+    private placeTrackPiece(): void {
+        this.raycaster.setFromCamera(this.mouse, this.cameraSystem.getCamera());
+        const intersects = this.raycaster.intersectObjects(this.scene.children);
+
+        if (intersects.length > 0) {
+            const intersectionPoint = intersects[0].point;
+            if (this.coasterBuilder.isValidPlacement(intersectionPoint)) {
+                const selectedTrackType = this.ui.getSelectedTrackType();
+                this.coasterBuilder.placeTrackPiece(selectedTrackType, 4, intersectionPoint);
+            } else {
+                console.log("Invalid placement position");
+            }
+        }
+    }
+
     private onKeyDown(event: KeyboardEvent): void {
         switch (event.key) {
             case 'ArrowUp':
@@ -135,39 +218,15 @@ class Game {
             case 'ArrowRight':
                 this.cameraSystem.moveCamera('down');
                 break;
+            case 'b':
+                this.toggleBuildMode();
+                break;
         }
     }
 
-    private onMouseMove(event: MouseEvent): void {
-        const edgeThreshold = 50; // pixels from edge to trigger scrolling
-        const { clientX, clientY } = event;
-        const { innerWidth, innerHeight } = window;
-
-        if (clientX < edgeThreshold) {
-            this.cameraSystem.moveCamera('up');
-        } else if (clientX > innerWidth - edgeThreshold) {
-            this.cameraSystem.moveCamera('down');
-        }
-
-        if (clientY < edgeThreshold) {
-            this.cameraSystem.moveCamera('left');
-        } else if (clientY > innerHeight - edgeThreshold) {
-            this.cameraSystem.moveCamera('right');
-        }
-    }
-
-    private onWheel(event: WheelEvent): void {
-        event.preventDefault(); // Prevent page scrolling
-
-        const delta = Math.sign(event.deltaY);
-        const currentZoom = this.cameraSystem.getCurrentZoomLevel();
-        const totalZoomLevels = this.cameraSystem.getTotalZoomLevels();
-
-        if (delta > 0 && currentZoom < totalZoomLevels - 1) {
-            this.cameraSystem.zoomOut();
-        } else if (delta < 0 && currentZoom > 0) {
-            this.cameraSystem.zoomIn();
-        }
+    private toggleBuildMode(): void {
+        this.buildMode = !this.buildMode;
+        console.log(`Build mode ${this.buildMode ? 'enabled' : 'disabled'}`);
     }
 
     private animate(): void {

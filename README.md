@@ -57,8 +57,13 @@ Roller Coaster Defense is an innovative Player versus Enemy (PvE) tower defense 
 roller-coaster-defense/
 ├── src/
 │   ├── components/
-│   │   └── CameraSystem.ts
-│   │   └── ActionsMenu.ts
+│   │   ├── CameraSystem.ts
+│   │   ├── ActionsMenu.ts
+│   │   └── rollercoaster/
+│   │       ├── TrackPiece.ts
+│   │       ├── CoasterBuilder.ts
+│   │       ├── TrackGeometry.ts
+│   │       └── GridSystem.ts
 │   ├── scenes/
 │   ├── shaders/
 │   ├── utils/
@@ -67,7 +72,8 @@ roller-coaster-defense/
 ├── public/
 │   ├── assets/
 ├── tests/
-└── index.html
+├── index.html
+├── RCBUILDINGSPECS.md
 ├── vite.config.ts
 ├── tsconfig.json
 ├── package.json
